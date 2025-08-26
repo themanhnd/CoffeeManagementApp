@@ -1,0 +1,108 @@
+spring:
+  # Database Configuration cho Development - sử dụng cùng DB như Docker
+  datasource:
+    url: jdbc:postgresql://localhost:5432/coffe_management
+    username: keycloak
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+  
+  jpa:
+    hibernate:
+      ddl-auto: update  # Auto update schema cho development
+    show-sql: true  # Show SQL cho development
+    open-in-view: false  # Disable to avoid warning
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  
+  # SQL Database initialization (optional - chỉ chạy nếu cần)
+  sql:
+    init:
+      mode: never  # Đặt never vì schema đã tồn tại
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+      continue-on-error: true
+  
+  # Redis Configuration cho Development - Updated to use lettuce instead of jedis
+  data:
+    redis:
+      host: localhost  # Connect to Docker Redis
+      port: 6379
+      password:
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 2
+          max-wait: 2000ms
+
+  # Kafka Configuration cho Development
+  kafka:
+    bootstrap-servers: localhost:9092  # Connect to Docker Kafka
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 5
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: coffee-management-dev-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.coffeeshop.management"
+      auto-offset-reset: earliest
+      max-poll-records: 500
+
+# AxonServer Configuration - Disable if not using AxonServer
+axon:
+  axonserver:
+    enabled: false  # Disable AxonServer to avoid connection warnings
+  eventhandling:
+    processors:
+      # Configure event processors if needed
+
+# Logging configuration to suppress unnecessary warnings
+logging:
+  level:
+    org.axonframework: WARN
+    io.axoniq: WARN
+    org.hibernate.orm.deprecation: ERROR
+    com.coffeeshop.management: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"
+
+# Management và Health Check
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,h2-console
+  endpoint:
+    health:
+      show-details: always
+
+# Server Configuration
+server:
+  port: 8082  # Change to available port
+  servlet:
+    context-path: /api
+
+# Development-specific settings
+coffee-management:
+  dev:
+    mock-external-services: true
+    auto-create-test-data: true
+    enable-debug-endpoints: true
