@@ -205,6 +205,359 @@ docker stop coffee-management-app
 docker rm coffee-management-app
 ```
 
+## 🏪 Nghiệp vụ và Chức năng hệ thống
+
+### 📋 Tổng quan nghiệp vụ
+Hệ thống Coffee Shop Management là một giải pháp quản lý toàn diện cho quán cà phê, được thiết kế để hỗ trợ tất cả các hoạt động từ quản lý sản phẩm, đơn hàng, khách hàng đến nhân viên.
+
+### 🎯 Các Domain nghiệp vụ chính
+
+#### 1. **👥 Quản lý Người dùng & Nhân viên (User & Employee Management)**
+- **Quản lý tài khoản người dùng**: Đăng ký, đăng nhập, phân quyền
+- **Quản lý nhân viên**: 
+  - Thông tin cá nhân, vị trí công việc, phòng ban
+  - Cấu trúc quản lý (manager-employee relationship)
+  - Trạng thái nhân viên (ACTIVE, INACTIVE, TERMINATED)
+  - Lương và ngày tuyển dụng
+- **Phân quyền**: Manager, Barista, Cashier với các quyền khác nhau
+
+#### 2. **👤 Quản lý Khách hàng (Customer Management)**
+- **Hồ sơ khách hàng**: Thông tin cá nhân, liên hệ, ngày sinh
+- **Chương trình khách hàng thân thiết**:
+  - Điểm tích lũy (loyalty points)
+  - Cấp độ thành viên: BRONZE, SILVER, GOLD, PLATINUM
+  - Ưu đãi theo cấp độ
+- **Tùy chọn liên hệ**: EMAIL, PHONE, SMS
+
+#### 3. **📦 Quản lý Sản phẩm & Danh mục (Product & Category Management)**
+- **Danh mục sản phẩm có cấu trúc phân cấp**:
+  - **Beverages**: Hot Coffee, Cold Coffee, Tea, Non-Coffee
+  - **Food**: Breakfast, Lunch, Snacks
+  - **Desserts**: Cakes, Pastries
+  - **Merchandise**: Coffee shop branded items
+- **Thông tin sản phẩm chi tiết**:
+  - Giá bán, giá vốn, kích thước (SMALL, MEDIUM, LARGE, EXTRA_LARGE)
+  - Loại sản phẩm (BEVERAGE, FOOD, DESSERT, MERCHANDISE)
+  - Thông tin dinh dưỡng (calories), thời gian chuẩn bị
+  - Quản lý tồn kho (stock_quantity, min_stock_level)
+  - Thông tin dị ứng (allergen_info)
+  - Sản phẩm nổi bật và trạng thái có sẵn
+
+#### 4. **🛒 Quản lý Đơn hàng (Order Management)**
+- **Quy trình đặt hàng hoàn chỉnh**:
+  - Tạo đơn hàng với mã đơn hàng duy nhất
+  - Loại đơn hàng: DINE_IN, TAKEAWAY, DELIVERY
+  - Trạng thái đơn hàng: PENDING → CONFIRMED → PREPARING → READY → COMPLETED/CANCELLED
+- **Chi tiết đơn hàng**:
+  - Danh sách sản phẩm (order_items) với số lượng và ghi chú
+  - Tính toán tổng tiền: subtotal, tax, discount, total
+  - Thời gian ước tính hoàn thành
+  - Số bàn (cho dine-in)
+- **Quản lý trạng thái sản phẩm trong đơn**: PENDING → PREPARING → READY → SERVED
+
+#### 5. **💳 Quản lý Thanh toán (Payment Management)**
+- **Phương thức thanh toán đa dạng**:
+  - CASH (tiền mặt)
+  - CARD (thẻ)
+  - MOBILE (ví điện tử)
+  - LOYALTY_POINTS (điểm tích lũy)
+- **Trạng thái thanh toán**: PENDING → PAID/FAILED/REFUNDED
+- **Tích hợp với hệ thống điểm thưởng**
+
+#### 6. **📊 Báo cáo và Thống kê (Reporting & Analytics)**
+- **Báo cáo doanh thu**: Theo ngày, tuần, tháng
+- **Báo cáo sản phẩm bán chạy**: Top selling products
+- **Báo cáo nhân viên**: Hiệu suất, số đơn hàng xử lý
+- **Báo cáo khách hàng**: Khách hàng thân thiết, tần suất mua hàng
+- **Báo cáo tồn kho**: Sản phẩm sắp hết, cần nhập thêm
+
+### 🔄 Luồng nghiệp vụ chính
+
+#### 📊 Sơ đồ luồng đặt hàng tổng quan
+
+```mermaid
+graph TD
+    A[👤 Khách hàng<br/>đặt hàng] --> B{Loại đơn hàng}
+    B -->|Dine-in| C[🪑 Chọn bàn]
+    B -->|Takeaway| D[📦 Takeaway]
+    B -->|Delivery| E[🚚 Delivery]
+    
+    C --> F[📝 Tạo đơn hàng]
+    D --> F
+    E --> F
+    
+    F --> G[💰 Cashier<br/>xác nhận đơn]
+    G --> H[💳 Chọn phương thức<br/>thanh toán]
+    
+    H --> I{Phương thức}
+    I -->|Cash| J[💵 Tiền mặt]
+    I -->|Card| K[💳 Thẻ]
+    I -->|Mobile| L[📱 Ví điện tử]
+    I -->|Points| M[🏆 Điểm tích lũy]
+    
+    J --> N[✅ Thanh toán<br/>hoàn tất]
+    K --> N
+    L --> N
+    M --> N
+    
+    N --> O[☕ Barista<br/>chuẩn bị]
+    O --> P{Loại sản phẩm}
+    P -->|Beverage| Q[🥤 Pha chế đồ uống]
+    P -->|Food| R[🍽️ Chuẩn bị thức ăn]
+    P -->|Dessert| S[🧁 Chuẩn bị tráng miệng]
+    
+    Q --> T[🔔 Thông báo sẵn sàng]
+    R --> T
+    S --> T
+    
+    T --> U[🚶 Giao cho khách hàng]
+    U --> V[✨ Hoàn thành đơn hàng]
+    
+    V --> W{Khách hàng<br/>thân thiết?}
+    W -->|Có| X[🏆 Tích điểm<br/>loyalty]
+    W -->|Không| Y[📊 Cập nhật<br/>thống kê]
+    X --> Y
+    
+    Y --> Z[📈 Event sourcing<br/>& Analytics]
+```
+
+#### 📋 Luồng Đặt hàng (Order Flow)
+1. **Nhận đơn hàng**: Khách hàng đặt hàng (dine-in/takeaway/delivery)
+2. **Xác nhận đơn hàng**: Nhân viên xác nhận và tính tổng tiền
+3. **Thanh toán**: Xử lý thanh toán qua các phương thức khác nhau
+4. **Chuẩn bị**: Barista chuẩn bị đồ uống/món ăn
+5. **Hoàn thành**: Giao hàng cho khách hàng
+6. **Tích điểm**: Cập nhật điểm thưởng cho khách hàng thân thiết
+
+#### 🏆 Luồng Khách hàng thân thiết (Loyalty Flow)
+1. **Đăng ký**: Khách hàng đăng ký chương trình thành viên
+2. **Tích điểm**: Mỗi giao dịch tích lũy điểm
+3. **Nâng cấp**: Tự động nâng cấp hạng thành viên khi đủ điều kiện
+4. **Ưu đãi**: Áp dụng giảm giá và ưu đãi theo hạng
+5. **Sử dụng điểm**: Thanh toán bằng điểm tích lũy
+
+#### 📦 Luồng Quản lý Kho (Inventory Flow)
+1. **Theo dõi tồn kho**: Real-time tracking số lượng sản phẩm
+2. **Cảnh báo**: Thông báo khi sản phẩm sắp hết (dưới min_stock_level)
+3. **Nhập kho**: Cập nhật số lượng khi nhập hàng mới
+4. **Xuất kho**: Tự động trừ kho khi bán hàng
+5. **Báo cáo**: Báo cáo tình trạng tồn kho định kỳ
+
+### 🎭 Vai trò và Quyền hạn (Roles & Permissions)
+
+#### 👨‍💼 Manager (Quản lý)
+- Toàn quyền quản lý hệ thống
+- Xem tất cả báo cáo và thống kê
+- Quản lý nhân viên và phân ca
+- Quản lý sản phẩm và giá cả
+- Quản lý chương trình khuyến mãi
+
+#### ☕ Barista (Pha chế)
+- Xem và cập nhật trạng thái đơn hàng
+- Quản lý việc chuẩn bị sản phẩm
+- Cập nhật tình trạng sản phẩm trong đơn hàng
+- Xem thông tin sản phẩm và công thức
+
+#### 💰 Cashier (Thu ngân)
+- Tạo và xử lý đơn hàng
+- Xử lý thanh toán
+- Quản lý thông tin khách hàng
+- Áp dụng chương trình khuyến mãi và điểm thưởng
+
+### 🚀 Tính năng Event-Driven
+
+#### 📡 Domain Events
+- **OrderCreated**: Khi đơn hàng được tạo
+- **OrderConfirmed**: Khi đơn hàng được xác nhận
+- **PaymentProcessed**: Khi thanh toán hoàn tất
+- **ProductPrepared**: Khi sản phẩm chuẩn bị xong
+- **LoyaltyPointsEarned**: Khi khách hàng tích điểm
+- **StockLevelChanged**: Khi số lượng tồn kho thay đổi
+
+#### 🔄 Event Sourcing Benefits
+- **Audit Trail**: Lưu trữ toàn bộ lịch sử thay đổi
+- **Replay Capability**: Có thể tái tạo lại trạng thái tại bất kỳ thời điểm nào
+- **Analytics**: Phân tích xu hướng và patterns từ event stream
+- **Integration**: Dễ dàng tích hợp với hệ thống bên ngoài
+
+#### 🏗️ Kiến trúc Event-Driven
+
+```mermaid
+graph LR
+    subgraph "Presentation Layer"
+        REST[📱 REST API]
+        WEB[🌐 Web UI]
+    end
+    
+    subgraph "Application Layer"
+        UC[📋 Use Cases]
+        EH[📡 Event Handlers]
+        SAGA[🔄 Sagas]
+    end
+    
+    subgraph "Domain Layer"
+        AGG[🏢 Aggregates]
+        DE[⚡ Domain Events]
+        DS[🎯 Domain Services]
+    end
+    
+    subgraph "Infrastructure"
+        ES[🗄️ Event Store]
+        PROJ[📊 Projections]
+        MSG[📨 Message Bus]
+    end
+    
+    subgraph "External Systems"
+        KAFKA[📡 Kafka]
+        REDIS[⚡ Redis]
+        PG[🐘 PostgreSQL]
+    end
+    
+    REST --> UC
+    WEB --> UC
+    UC --> AGG
+    AGG --> DE
+    DE --> EH
+    EH --> SAGA
+    DE --> ES
+    ES --> PROJ
+    DE --> MSG
+    MSG --> KAFKA
+    ES --> REDIS
+    PROJ --> PG
+```
+
+### 🔌 API Endpoints
+
+#### 🔐 Authentication & Users
+- `POST /api/auth/login` - Đăng nhập
+- `POST /api/auth/logout` - Đăng xuất
+- `GET /api/users/profile` - Xem profile
+- `PUT /api/users/profile` - Cập nhật profile
+
+#### 👥 Employee Management
+- `GET /api/employees` - Danh sách nhân viên
+- `POST /api/employees` - Tạo nhân viên mới
+- `GET /api/employees/{id}` - Chi tiết nhân viên
+- `PUT /api/employees/{id}` - Cập nhật nhân viên
+- `DELETE /api/employees/{id}` - Xóa nhân viên
+
+#### 👤 Customer Management
+- `GET /api/customers` - Danh sách khách hàng
+- `POST /api/customers` - Tạo khách hàng mới
+- `GET /api/customers/{id}` - Chi tiết khách hàng
+- `PUT /api/customers/{id}` - Cập nhật khách hàng
+- `GET /api/customers/{id}/loyalty` - Thông tin điểm thưởng
+
+#### 📦 Product & Category Management
+- `GET /api/categories` - Danh sách danh mục
+- `POST /api/categories` - Tạo danh mục mới
+- `GET /api/products` - Danh sách sản phẩm
+- `POST /api/products` - Tạo sản phẩm mới
+- `GET /api/products/{id}` - Chi tiết sản phẩm
+- `PUT /api/products/{id}` - Cập nhật sản phẩm
+- `GET /api/products/featured` - Sản phẩm nổi bật
+- `GET /api/products/search` - Tìm kiếm sản phẩm
+
+#### 🛒 Order Management
+- `GET /api/orders` - Danh sách đơn hàng
+- `POST /api/orders` - Tạo đơn hàng mới
+- `GET /api/orders/{id}` - Chi tiết đơn hàng
+- `PUT /api/orders/{id}/status` - Cập nhật trạng thái đơn hàng
+- `POST /api/orders/{id}/items` - Thêm sản phẩm vào đơn
+- `GET /api/orders/pending` - Đơn hàng đang chờ
+- `GET /api/orders/preparing` - Đơn hàng đang chuẩn bị
+
+#### 💳 Payment Management
+- `POST /api/payments` - Xử lý thanh toán
+- `GET /api/payments/{id}` - Chi tiết thanh toán
+- `POST /api/payments/{id}/refund` - Hoàn tiền
+- `GET /api/payments/methods` - Danh sách phương thức thanh toán
+
+#### 📊 Reports & Analytics
+- `GET /api/reports/sales` - Báo cáo doanh thu
+- `GET /api/reports/products/top-selling` - Sản phẩm bán chạy
+- `GET /api/reports/employees/performance` - Hiệu suất nhân viên
+- `GET /api/reports/customers/loyalty` - Báo cáo khách hàng thân thiết
+- `GET /api/reports/inventory` - Báo cáo tồn kho
+
+#### 🏆 Loyalty Program
+- `GET /api/loyalty/points/{customerId}` - Điểm tích lũy
+- `POST /api/loyalty/earn` - Tích điểm
+- `POST /api/loyalty/redeem` - Sử dụng điểm
+- `GET /api/loyalty/tiers` - Danh sách hạng thành viên
+
+### 🎯 Use Cases chính của hệ thống
+
+#### 👥 User & Employee Use Cases
+- **UC-001**: Đăng nhập/Đăng xuất nhân viên
+- **UC-002**: Quản lý hồ sơ nhân viên
+- **UC-003**: Phân quyền dựa trên vai trò (Manager/Barista/Cashier)
+- **UC-004**: Theo dõi hiệu suất làm việc
+
+#### 👤 Customer Use Cases  
+- **UC-101**: Đăng ký khách hàng thân thiết
+- **UC-102**: Tích lũy và sử dụng điểm thưởng
+- **UC-103**: Nâng cấp hạng thành viên tự động
+- **UC-104**: Xem lịch sử mua hàng
+
+#### 📦 Product Management Use Cases
+- **UC-201**: Quản lý danh mục sản phẩm (CRUD)
+- **UC-202**: Quản lý sản phẩm với thông tin chi tiết
+- **UC-203**: Theo dõi tồn kho real-time
+- **UC-204**: Cảnh báo sản phẩm sắp hết hàng
+- **UC-205**: Tìm kiếm sản phẩm nâng cao
+
+#### 🛒 Order Management Use Cases
+- **UC-301**: Tạo đơn hàng (Dine-in/Takeaway/Delivery)
+- **UC-302**: Thêm/Xóa sản phẩm trong đơn hàng
+- **UC-303**: Tính toán tổng tiền (bao gồm tax, discount)
+- **UC-304**: Theo dõi trạng thái đơn hàng real-time
+- **UC-305**: Ước tính thời gian hoàn thành
+- **UC-306**: Hủy đơn hàng và hoàn tiền
+
+#### 💳 Payment Use Cases
+- **UC-401**: Xử lý thanh toán đa phương thức
+- **UC-402**: Thanh toán bằng điểm tích lũy
+- **UC-403**: Xử lý hoàn tiền
+- **UC-404**: Ghi nhận giao dịch vào hệ thống
+
+#### 📊 Reporting & Analytics Use Cases
+- **UC-501**: Báo cáo doanh thu theo thời gian
+- **UC-502**: Phân tích sản phẩm bán chạy
+- **UC-503**: Báo cáo hiệu suất nhân viên
+- **UC-504**: Thống kê khách hàng thân thiết
+- **UC-505**: Báo cáo tồn kho và dự báo nhập hàng
+
+#### ⚡ Event-Driven Use Cases
+- **UC-601**: Xử lý domain events real-time
+- **UC-602**: Event sourcing cho audit trail
+- **UC-603**: Tạo projections cho read models
+- **UC-604**: Saga pattern cho distributed transactions
+- **UC-605**: Outbox pattern đảm bảo consistency
+
+### 🏪 Quy trình nghiệp vụ mẫu
+
+#### ☕ Kịch bản: Khách hàng đặt cappuccino takeaway
+1. **Cashier** tạo đơn hàng mới (UC-301)
+2. Thêm Cappuccino vào đơn hàng (UC-302)
+3. Áp dụng discount nếu có (UC-303)
+4. Khách hàng thanh toán bằng thẻ (UC-401)
+5. **Barista** nhận notification chuẩn bị (UC-304)
+6. Cập nhật trạng thái: PREPARING → READY (UC-304)
+7. Thông báo khách hàng đến lấy
+8. Hoàn thành đơn hàng và tích điểm (UC-102)
+9. Cập nhật tồn kho coffee beans (UC-203)
+10. Ghi nhận event để analytics (UC-601)
+
+#### 🏆 Kịch bản: Khách hàng thân thiết nâng cấp hạng
+1. Khách hàng SILVER mua đơn hàng $50
+2. Hệ thống tích điểm tự động (UC-102)
+3. Kiểm tra điều kiện nâng cấp GOLD
+4. Tự động nâng cấp hạng thành viên (UC-103)
+5. Gửi notification về ưu đãi mới
+6. Cập nhật discount rate cho lần mua tiếp theo
+
 ## Nguyên tắc thiết kế
 
 ### Domain-Driven Design (DDD)
